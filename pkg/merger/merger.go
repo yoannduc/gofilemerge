@@ -81,28 +81,23 @@ func (m *merger) Write(p []byte) (int, error) {
 			skipFrom = file.Offset(pos)
 		}
 
-		// If previous token was import & current is string or ident, means inline import.
-		// Can handle
-		// 	import "fmt"
+		// If previous token was import & current is not `(`, means inline import.
+		// Can handle any form of
 		//
-		// 	import "fmt"
-		//	import "math/rand"
+		// 	import "math"
 		//
-		//	import m "math"
-		//
-		//	import f "fmt"
 		//	import m "math"
 		//
 		//	import . "math"
 		//
-		//	import . "fmt"
-		//	import . "math"
-		//
 		//	import _ "math"
 		//
-		//	import _ "fmt"
-		//	import _ "math"
-		if prev == token.IMPORT && (tok == token.STRING || tok == token.IDENT || tok == token.PERIOD) {
+		// Also handles multi line inline imports like
+		//
+		//	import "math"
+		//	import "fmt"
+		//
+		if prev == token.IMPORT && tok != token.LPAREN {
 			imprtBloc.inline = true
 		}
 

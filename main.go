@@ -50,14 +50,15 @@ func main() {
 			log.Fatal(fmt.Errorf(`file "%s": %w`, arg, errFileNotGoFile))
 		}
 
-		b, err := os.ReadFile(arg)
+		f, err := os.Open(arg)
 		if err != nil {
 			log.Fatal(fmt.Errorf(`file "%s": %w`, arg, err))
 		}
-		_, err = m.Write(b)
+		_, err = f.WriteTo(m)
 		if err != nil {
 			log.Fatal(fmt.Errorf(`file "%s": %w`, arg, err))
 		}
+		f.Close()
 
 		if shouldDel {
 			defer os.Remove(arg)

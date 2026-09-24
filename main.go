@@ -54,7 +54,10 @@ func main() {
 		if err != nil {
 			log.Fatal(fmt.Errorf(`file "%s": %w`, arg, err))
 		}
-		m.ScanFile(b)
+		_, err = m.Write(b)
+		if err != nil {
+			log.Fatal(fmt.Errorf(`file "%s": %w`, arg, err))
+		}
 
 		if shouldDel {
 			defer os.Remove(arg)
@@ -62,7 +65,10 @@ func main() {
 	}
 
 	if outPath == "" {
-		m.WriteTo(os.Stdout)
+		_, err := m.WriteTo(os.Stdout)
+		if err != nil {
+			log.Fatal(fmt.Errorf(`output: %w`, err))
+		}
 		return
 	}
 
@@ -75,7 +81,10 @@ func main() {
 		log.Fatal(fmt.Errorf(`output "%s": %w`, outPath, err))
 	}
 	defer f.Close()
-	m.WriteTo(f)
+	_, err = m.WriteTo(f)
+	if err != nil {
+		log.Fatal(fmt.Errorf(`output "%s": %w`, outPath, err))
+	}
 }
 
 func isGoFilename(name string) bool {

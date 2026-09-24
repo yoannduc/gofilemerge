@@ -21,7 +21,7 @@ type imprtHandling struct {
 
 type Merger interface {
 	SetPackage(string)
-	ScanFile([]byte)
+	Write([]byte) (int, error)
 	WriteTo(io.Writer) (int64, error)
 }
 
@@ -44,11 +44,13 @@ func (m *merger) SetPackage(pkg string) {
 	m.pkgName = pkg
 }
 
-func (m *merger) ScanFile(b []byte) {
+func (m *merger) Write(b []byte) (int, error) {
 	fset := token.NewFileSet()
 	file := fset.AddFile("", fset.Base(), len(b))
 	var s scanner.Scanner
 	s.Init(file, b, nil, scanner.ScanComments)
+
+	var out int
 
 	var imprtBloc imprtHandling
 	var prev token.Token
@@ -65,9 +67,17 @@ func (m *merger) ScanFile(b []byte) {
 
 		if tok == token.PACKAGE {
 			if m.docbuf.Len() > 0 {
-				m.docbuf.WriteString("\n")
+				i, err := m.docbuf.WriteString("\n")
+				if err != nil {
+					return out, err
+				}
+				out += i
 			}
-			m.docbuf.Write(b[:file.Position(pos).Offset])
+			i, err := m.docbuf.Write(b[:file.Position(pos).Offset])
+			if err != nil {
+				return out, err
+			}
+			out += i
 		}
 
 		// If previous token was import & current is string or ident, means inline import.
@@ -104,9 +114,17 @@ func (m *merger) ScanFile(b []byte) {
 		// If imports are done & we reached newline, write all remaining file to body buffer.
 		if imprtBloc.done && prev == token.SEMICOLON {
 			if m.bodybuf.Len() > 0 {
-				m.bodybuf.WriteString("\n")
+				i, err := m.bodybuf.WriteString("\n")
+				if err != nil {
+					return out, err
+				}
+				out += i
 			}
-			m.bodybuf.Write(b[file.Offset(pos):])
+			i, err := m.bodybuf.Write(b[file.Offset(pos):])
+			if err != nil {
+				return out, err
+			}
+			out += i
 			break
 		}
 
@@ -142,6 +160,8 @@ func (m *merger) ScanFile(b []byte) {
 
 		prev = tok
 	}
+
+	return out, nil
 }
 
 func (m *merger) WriteTo(w io.Writer) (int64, error) {

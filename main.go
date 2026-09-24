@@ -29,14 +29,19 @@ var (
 	errFileNotGoFile = errors.New("file is not go file")
 )
 
+// Flag vars.
 var (
-	shouldDel = flag.Bool("d", false, "delete merged files")
-	outPath   = flag.String("out", "", "output file; defaults to stdout")
-	pkgName   = flag.String("pkg", "", "output package name; defaults to first package name scanned")
+	shouldDel bool
+	outPath   string
+	pkgName   string
 )
 
 func main() {
+	// Remove date & time from std logs.
 	log.SetFlags(0)
+	flag.BoolVar(&shouldDel, "rm", false, "remove merged files")
+	flag.StringVar(&outPath, "out", "", "output file; defaults to stdout")
+	flag.StringVar(&pkgName, "pkg", "", "output package name; defaults to first package name scanned")
 	flag.Usage = func() {
 		fmt.Println("usage: gofilemerge [flags] [path ...]")
 		flag.PrintDefaults()
@@ -50,8 +55,8 @@ func main() {
 	}
 
 	s := NewScannerByteSlice()
-	if *pkgName != "" {
-		s.SetPackage(*pkgName)
+	if pkgName != "" {
+		s.SetPackage(pkgName)
 	}
 
 	for _, arg := range args {
@@ -65,23 +70,23 @@ func main() {
 		}
 		s.ScanFile(b)
 
-		if *shouldDel {
+		if shouldDel {
 			defer os.Remove(arg)
 		}
 	}
 
-	if *outPath == "" {
+	if outPath == "" {
 		s.WriteTo(os.Stdout)
 		return
 	}
 
-	if !isGoFilename(*outPath) {
-		log.Fatal(fmt.Errorf(`output "%s": %w`, *outPath, errFileNotGoFile))
+	if !isGoFilename(outPath) {
+		log.Fatal(fmt.Errorf(`output "%s": %w`, outPath, errFileNotGoFile))
 	}
 
-	f, err := os.Create(*outPath)
+	f, err := os.Create(outPath)
 	if err != nil {
-		log.Fatal(fmt.Errorf(`output "%s": %w`, *outPath, err))
+		log.Fatal(fmt.Errorf(`output "%s": %w`, outPath, err))
 	}
 	defer f.Close()
 	s.WriteTo(f)

@@ -19,30 +19,32 @@ type imprtHandling struct {
 	done     bool
 }
 
-type ScannerByteSlice interface {
+type Merger interface {
 	SetPackage(string)
 	ScanFile([]byte)
 	WriteTo(io.Writer) (int64, error)
 }
 
-type scnrbs struct {
+type merger struct {
 	docbuf  bytes.Buffer
 	pkgName string
 	imports map[string]imprt
 	bodybuf bytes.Buffer
 }
 
-func NewScannerByteSlice() ScannerByteSlice {
-	return &scnrbs{
+var _ Merger = (*merger)(nil)
+
+func NewScannerByteSlice() Merger {
+	return &merger{
 		imports: make(map[string]imprt, 15),
 	}
 }
 
-func (sc *scnrbs) SetPackage(pkg string) {
-	sc.pkgName = pkg
+func (m *merger) SetPackage(pkg string) {
+	m.pkgName = pkg
 }
 
-func (sc *scnrbs) ScanFile(b []byte) {
+func (m *merger) ScanFile(b []byte) {
 	fset := token.NewFileSet()
 	file := fset.AddFile("", fset.Base(), len(b))
 	var s scanner.Scanner
@@ -57,15 +59,15 @@ func (sc *scnrbs) ScanFile(b []byte) {
 			break
 		}
 
-		if prev == token.PACKAGE && sc.pkgName == "" {
-			sc.pkgName = lit
+		if prev == token.PACKAGE && m.pkgName == "" {
+			m.pkgName = lit
 		}
 
 		if tok == token.PACKAGE {
-			if sc.docbuf.Len() > 0 {
-				sc.docbuf.WriteString("\n")
+			if m.docbuf.Len() > 0 {
+				m.docbuf.WriteString("\n")
 			}
-			sc.docbuf.Write(b[:file.Position(pos).Offset])
+			m.docbuf.Write(b[:file.Position(pos).Offset])
 		}
 
 		// If previous token was import & current is string or ident, means inline import.
@@ -101,10 +103,10 @@ func (sc *scnrbs) ScanFile(b []byte) {
 
 		// If imports are done & we reached newline, write all remaining file to body buffer.
 		if imprtBloc.done && prev == token.SEMICOLON {
-			if sc.bodybuf.Len() > 0 {
-				sc.bodybuf.WriteString("\n")
+			if m.bodybuf.Len() > 0 {
+				m.bodybuf.WriteString("\n")
 			}
-			sc.bodybuf.Write(b[file.Offset(pos):])
+			m.bodybuf.Write(b[file.Offset(pos):])
 			break
 		}
 
@@ -119,7 +121,7 @@ func (sc *scnrbs) ScanFile(b []byte) {
 
 			if tok == token.STRING {
 				imp.Path = lit
-				sc.imports[lit] = imp
+				m.imports[lit] = imp
 
 				imp = imprt{}
 
@@ -142,9 +144,9 @@ func (sc *scnrbs) ScanFile(b []byte) {
 	}
 }
 
-func (sc *scnrbs) WriteTo(w io.Writer) (int64, error) {
+func (m *merger) WriteTo(w io.Writer) (int64, error) {
 	var out int64
-	i, err := sc.docbuf.WriteTo(w)
+	i, err := m.docbuf.WriteTo(w)
 	if err != nil {
 		return out, err
 	}
@@ -156,7 +158,7 @@ func (sc *scnrbs) WriteTo(w io.Writer) (int64, error) {
 	}
 	out += int64(tmp)
 
-	tmp, err = io.WriteString(w, sc.pkgName)
+	tmp, err = io.WriteString(w, m.pkgName)
 	if err != nil {
 		return out, err
 	}
@@ -168,14 +170,14 @@ func (sc *scnrbs) WriteTo(w io.Writer) (int64, error) {
 	}
 	out += int64(tmp)
 
-	if len(sc.imports) > 0 {
+	if len(m.imports) > 0 {
 		tmp, err = io.WriteString(w, "import (\n")
 		if err != nil {
 			return out, err
 		}
 		out += int64(tmp)
 
-		for v := range maps.Values(sc.imports) {
+		for v := range maps.Values(m.imports) {
 			tmp, err = io.WriteString(w, "\t")
 			if err != nil {
 				return out, err
@@ -214,7 +216,7 @@ func (sc *scnrbs) WriteTo(w io.Writer) (int64, error) {
 		out += int64(tmp)
 	}
 
-	i, err = sc.bodybuf.WriteTo(w)
+	i, err = m.bodybuf.WriteTo(w)
 	if err != nil {
 		return out, err
 	}

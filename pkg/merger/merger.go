@@ -44,17 +44,18 @@ func (m *merger) SetPackage(pkg string) {
 	m.pkgName = pkg
 }
 
-func (m *merger) Write(b []byte) (int, error) {
+func (m *merger) Write(p []byte) (int, error) {
 	fset := token.NewFileSet()
-	file := fset.AddFile("", fset.Base(), len(b))
+	file := fset.AddFile("", fset.Base(), len(p))
 	var s scanner.Scanner
-	s.Init(file, b, nil, scanner.ScanComments)
+	s.Init(file, p, nil, scanner.ScanComments)
 
-	var out int
+	var n int
 
 	var imprtBloc imprtHandling
 	var prev token.Token
 	var imp imprt
+	var skipFrom int
 	for {
 		pos, tok, lit := s.Scan()
 		if tok == token.EOF {
@@ -67,17 +68,17 @@ func (m *merger) Write(b []byte) (int, error) {
 
 		if tok == token.PACKAGE {
 			if m.docbuf.Len() > 0 {
-				i, err := m.docbuf.WriteString("\n")
+				_, err := m.docbuf.WriteString("\n")
 				if err != nil {
-					return out, err
+					return n, err
 				}
-				out += i
 			}
-			i, err := m.docbuf.Write(b[:file.Position(pos).Offset])
+			i, err := m.docbuf.Write(p[:file.Offset(pos)])
 			if err != nil {
-				return out, err
+				return n, err
 			}
-			out += i
+			n += i
+			skipFrom = file.Offset(pos)
 		}
 
 		// If previous token was import & current is string or ident, means inline import.
@@ -114,17 +115,17 @@ func (m *merger) Write(b []byte) (int, error) {
 		// If imports are done & we reached newline, write all remaining file to body buffer.
 		if imprtBloc.done && prev == token.SEMICOLON {
 			if m.bodybuf.Len() > 0 {
-				i, err := m.bodybuf.WriteString("\n")
+				_, err := m.bodybuf.WriteString("\n")
 				if err != nil {
-					return out, err
+					return n, err
 				}
-				out += i
 			}
-			i, err := m.bodybuf.Write(b[file.Offset(pos):])
+			i, err := m.bodybuf.Write(p[file.Offset(pos):])
 			if err != nil {
-				return out, err
+				return n, err
 			}
-			out += i
+			n += i
+			n += len(p[skipFrom:file.Offset(pos)])
 			break
 		}
 
@@ -161,7 +162,7 @@ func (m *merger) Write(b []byte) (int, error) {
 		prev = tok
 	}
 
-	return out, nil
+	return n, nil
 }
 
 func (m *merger) WriteTo(w io.Writer) (int64, error) {

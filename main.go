@@ -40,9 +40,9 @@ func main() {
 		return
 	}
 
-	s := merger.NewScannerByteSlice()
+	m := merger.NewMerger()
 	if pkgName != "" {
-		s.SetPackage(pkgName)
+		m.SetPackage(pkgName)
 	}
 
 	for _, arg := range args {
@@ -54,7 +54,7 @@ func main() {
 		if err != nil {
 			log.Fatal(fmt.Errorf(`file "%s": %w`, arg, err))
 		}
-		s.ScanFile(b)
+		m.ScanFile(b)
 
 		if shouldDel {
 			defer os.Remove(arg)
@@ -62,7 +62,7 @@ func main() {
 	}
 
 	if outPath == "" {
-		s.WriteTo(os.Stdout)
+		m.WriteTo(os.Stdout)
 		return
 	}
 
@@ -75,7 +75,7 @@ func main() {
 		log.Fatal(fmt.Errorf(`output "%s": %w`, outPath, err))
 	}
 	defer f.Close()
-	s.WriteTo(f)
+	m.WriteTo(f)
 }
 
 func isGoFilename(name string) bool {

@@ -34,7 +34,7 @@ type merger struct {
 
 var _ Merger = (*merger)(nil)
 
-func NewScannerByteSlice() Merger {
+func NewMerger() Merger {
 	return &merger{
 		imports: make(map[string]imprt, 15),
 	}

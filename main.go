@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"errors"
+	"flag"
 	"fmt"
 	"go/scanner"
 	"go/token"
@@ -9,7 +11,7 @@ import (
 	"log"
 	"maps"
 	"os"
-	"time"
+	"strings"
 )
 
 type imprt struct {
@@ -23,37 +25,70 @@ type imprtHandling struct {
 	done     bool
 }
 
+var (
+	errFileNotGoFile = errors.New("file is not go file")
+)
+
+var (
+	shouldDel = flag.Bool("d", false, "delete merged files")
+	outPath   = flag.String("out", "", "output file; defaults to stdout")
+	pkgName   = flag.String("pkg", "", "output package name; defaults to first package name scanned")
+)
+
 func main() {
-	start := time.Now()
+	log.SetFlags(0)
+	flag.Usage = func() {
+		fmt.Println("usage: gofilemerge [flags] [path ...]")
+		flag.PrintDefaults()
+		os.Exit(0)
+	}
+	flag.Parse()
+
+	args := flag.Args()
+	if len(args) == 0 {
+		return
+	}
 
 	s := NewScannerByteSlice()
-	s.SetPackage("toto")
-
-	b, err := os.ReadFile("testdata/gomock.go")
-	if err != nil {
-		log.Fatal(err)
+	if *pkgName != "" {
+		s.SetPackage(*pkgName)
 	}
-	s.ScanFile(b)
 
-	b, err = os.ReadFile("testdata/inline_imports.go")
-	if err != nil {
-		log.Fatal(err)
+	for _, arg := range args {
+		if !isGoFilename(arg) {
+			log.Fatal(fmt.Errorf(`file "%s": %w`, arg, errFileNotGoFile))
+		}
+
+		b, err := os.ReadFile(arg)
+		if err != nil {
+			log.Fatal(fmt.Errorf(`file "%s": %w`, arg, err))
+		}
+		s.ScanFile(b)
+
+		if *shouldDel {
+			defer os.Remove(arg)
+		}
 	}
-	s.ScanFile(b)
 
-	// var buf strings.Builder
-	// s.WriteTo(&buf)
-	// fmt.Print(buf.String())
+	if *outPath == "" {
+		s.WriteTo(os.Stdout)
+		return
+	}
 
-	f, err := os.Create("out.go")
+	if !isGoFilename(*outPath) {
+		log.Fatal(fmt.Errorf(`output "%s": %w`, *outPath, errFileNotGoFile))
+	}
+
+	f, err := os.Create(*outPath)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(fmt.Errorf(`output "%s": %w`, *outPath, err))
 	}
 	defer f.Close()
 	s.WriteTo(f)
+}
 
-	elapsed := time.Since(start)
-	fmt.Printf("elapsed | %T | %v\n", elapsed, elapsed)
+func isGoFilename(name string) bool {
+	return strings.HasSuffix(name, ".go")
 }
 
 type ScannerByteSlice interface {

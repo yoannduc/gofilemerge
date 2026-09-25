@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/yoannduc/gofilemerge/pkg/merger"
@@ -77,6 +78,10 @@ func main() {
 		log.Fatal(fmt.Errorf(`output "%s": %w`, outPath, errFileNotGoFile))
 	}
 
+	err := os.MkdirAll(filepath.Dir(outPath), 0755)
+	if err != nil {
+		log.Fatal(fmt.Errorf(`output "%s": %w`, outPath, err))
+	}
 	f, err := os.Create(outPath)
 	if err != nil {
 		log.Fatal(fmt.Errorf(`output "%s": %w`, outPath, err))

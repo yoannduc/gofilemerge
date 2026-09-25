@@ -5,7 +5,6 @@ import (
 	"go/scanner"
 	"go/token"
 	"io"
-	"maps"
 )
 
 type imprt struct {
@@ -193,7 +192,7 @@ func (m *merger) WriteTo(w io.Writer) (int64, error) {
 		}
 		out += int64(tmp)
 
-		for v := range maps.Values(m.imports) {
+		for _, v := range m.imports {
 			tmp, err = io.WriteString(w, "\t")
 			if err != nil {
 				return out, err

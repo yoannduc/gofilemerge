@@ -5,6 +5,9 @@ import (
 	"go/scanner"
 	"go/token"
 	"io"
+	"maps"
+	"slices"
+	"strings"
 )
 
 type imprt struct {
@@ -66,7 +69,7 @@ func (m *merger) Write(p []byte) (int, error) {
 		}
 
 		if tok == token.PACKAGE {
-			if m.docbuf.Len() > 0 {
+			if file.Offset(pos) > 0 && m.docbuf.Len() > 0 {
 				_, err := m.docbuf.WriteString("\n")
 				if err != nil {
 					return n, err
@@ -192,7 +195,10 @@ func (m *merger) WriteTo(w io.Writer) (int64, error) {
 		}
 		out += int64(tmp)
 
-		for _, v := range m.imports {
+		// Sort to have repeatable output for tests
+		for _, v := range slices.SortedFunc(maps.Values(m.imports), func(a, b imprt) int {
+			return strings.Compare(a.Path, b.Path)
+		}) {
 			tmp, err = io.WriteString(w, "\t")
 			if err != nil {
 				return out, err

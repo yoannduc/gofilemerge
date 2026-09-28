@@ -10,23 +10,48 @@ import (
 	"strings"
 )
 
+// imprt is a struct that represent one import, with Name being its custom
+// name & Path being its complete path, like:
+//
+//	import (
+//		gin /* <- Name */ "github.com/gin-gonic/gin" /* <- Path */
+//	)
 type imprt struct {
 	Name string
 	Path string
 }
 
+// imprtHandling is a struct to keep track of state of import being
+// handled or not.
 type imprtHandling struct {
 	handling bool
 	inline   bool
 	done     bool
 }
 
+// A Merger is used to merge files. Files to be merged are to be added
+// to buffer through Write method, then when all files are added, the
+// output merged file can be written to an [io.Writer] with WriteTo.
+// Merger is not thread safe.
+//
+// For imports, it handles both group imports & inline ones. It also handles multi-lines imports like:
+//
+//	import "fmt"
+//	import "math"
+//
+// It handles aliased, dot and blank imports like:
+//
+//	import "math"
+//	import m "math"
+//	import . "math"
+//	import _ "math"
 type Merger interface {
 	SetPackage(string)
 	Write([]byte) (int, error)
 	WriteTo(io.Writer) (int64, error)
 }
 
+// merger is the concrete type that implements [Merger].
 type merger struct {
 	docbuf  bytes.Buffer
 	pkgName string
@@ -34,18 +59,25 @@ type merger struct {
 	bodybuf bytes.Buffer
 }
 
+// Check that *merger correctly implements [Merger].
 var _ Merger = (*merger)(nil)
 
+// NewMerger creates and initializes a new [Merger].
 func NewMerger() Merger {
 	return &merger{
 		imports: make(map[string]imprt, 15),
 	}
 }
 
+// SetPackage sets the package name that will appear on merged output.
 func (m *merger) SetPackage(pkg string) {
 	m.pkgName = pkg
 }
 
+// Write implements [io.Writer].
+//
+// Write writes a go file to [Merger]. The return value n is the
+// length of p; err is always nil.
 func (m *merger) Write(p []byte) (int, error) {
 	fset := token.NewFileSet()
 	file := fset.AddFile("", fset.Base(), len(p))
@@ -77,22 +109,8 @@ func (m *merger) Write(p []byte) (int, error) {
 			skipFrom = file.Offset(pos)
 		}
 
-		// If previous token was import & current is not `(`, means inline import.
-		// Can handle any form of
-		//
-		// 	import "math"
-		//
-		//	import m "math"
-		//
-		//	import . "math"
-		//
-		//	import _ "math"
-		//
-		// Also handles multi line inline imports like
-		//
-		//	import "math"
-		//	import "fmt"
-		//
+		// If previous token was import & current is not `(`, means
+		// inline import.
 		if prev == token.IMPORT && tok != token.LPAREN {
 			imprtBloc.inline = true
 		}
@@ -103,7 +121,8 @@ func (m *merger) Write(p []byte) (int, error) {
 			imprtBloc.done = false
 		}
 
-		// If imports are done & we reached newline, write all remaining file to body buffer.
+		// If imports are done & we reached newline, write all
+		// remaining file to body buffer.
 		if imprtBloc.done && prev == token.SEMICOLON {
 			if m.bodybuf.Len() > 0 {
 				_, _ = m.bodybuf.WriteString("\n")
@@ -129,7 +148,8 @@ func (m *merger) Write(p []byte) (int, error) {
 
 				imp = imprt{}
 
-				// If we were handling inline import, we can consider treatment of imports done.
+				// If we were handling inline import, we can consider
+				// treatment of imports done.
 				if imprtBloc.inline {
 					imprtBloc.inline = false
 					imprtBloc.handling = false
@@ -137,7 +157,8 @@ func (m *merger) Write(p []byte) (int, error) {
 				}
 			}
 
-			// First losing parenthesis after import statement means we are done for parenthesis imports.
+			// First losing parenthesis after import statement means we
+			// are done for parenthesis imports.
 			if tok == token.RPAREN {
 				imprtBloc.handling = false
 				imprtBloc.done = true
@@ -150,6 +171,12 @@ func (m *merger) Write(p []byte) (int, error) {
 	return n, nil
 }
 
+// WriteTo implements [io.WriterTo].
+//
+// WriteTo writes resulting merged file to w until there's no more
+// data to write or when an error occurs. The return value n is the
+// number of bytes written. Any error encountered during the write
+// is also returned.
 func (m *merger) WriteTo(w io.Writer) (int64, error) {
 	var out int64
 	i, err := m.docbuf.WriteTo(w)

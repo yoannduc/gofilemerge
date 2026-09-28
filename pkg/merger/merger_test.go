@@ -209,18 +209,15 @@ func main() {
 func TestNewMerger(t *testing.T) {
 	v := NewMerger()
 	r := reflect.ValueOf(v)
-	if _, ok := reflect.TypeAssert[Merger](r); !ok {
-		t.Fatalf(`err1`)
-	}
-	if _, ok := reflect.TypeAssert[*merger](r); !ok {
-		t.Fatalf(`err2`)
+	if _, ok := reflect.TypeAssert[*Merger](r); !ok {
+		t.Fatalf(`output is not of type *Merger.`)
 	}
 
-	new := &merger{
+	new := &Merger{
 		imports: make(map[string]imprt, 15),
 	}
 	if !reflect.DeepEqual(v, new) {
-		t.Fatalf(`err3`)
+		t.Fatalf(`New result was not equal to raw initialisation.`)
 	}
 }
 
@@ -239,12 +236,8 @@ func TestSetPackage(t *testing.T) {
 		t.Run(test.in, func(t *testing.T) {
 			m := NewMerger()
 			m.SetPackage(test.in)
-			cast, ok := m.(*merger)
-			if !ok {
-				t.Fatalf("could not cast Merger to *merger")
-			}
-			if !reflect.DeepEqual(cast.pkgName, test.out) {
-				t.Fatalf(`value was not expected for input "%v". Expected %v, got %v`, test.in, test.out, cast.pkgName)
+			if !reflect.DeepEqual(m.pkgName, test.out) {
+				t.Fatalf(`value was not expected for input "%v". Expected %v, got %v`, test.in, test.out, m.pkgName)
 			}
 		})
 	}
@@ -573,22 +566,17 @@ log.Println(math.Round(v))
 				}
 			}
 
-			cast, ok := m.(*merger)
-			if !ok {
-				t.Fatalf("could not cast Merger to *merger")
+			if !reflect.DeepEqual(m.docbuf, test.docbuf) {
+				t.Fatalf(`docubuf value error. Expected %v, got %v`, test.docbuf, m.docbuf)
 			}
-
-			if !reflect.DeepEqual(cast.docbuf, test.docbuf) {
-				t.Fatalf(`docubuf value error. Expected %v, got %v`, test.docbuf, cast.docbuf)
+			if !reflect.DeepEqual(m.pkgName, test.pkgName) {
+				t.Fatalf(`pkgName value error. Expected %v, got %v`, test.pkgName, m.pkgName)
 			}
-			if !reflect.DeepEqual(cast.pkgName, test.pkgName) {
-				t.Fatalf(`pkgName value error. Expected %v, got %v`, test.pkgName, cast.pkgName)
+			if !reflect.DeepEqual(m.imports, test.imports) {
+				t.Fatalf(`imports value error. Expected %v, got %v`, test.imports, m.imports)
 			}
-			if !reflect.DeepEqual(cast.imports, test.imports) {
-				t.Fatalf(`imports value error. Expected %v, got %v`, test.imports, cast.imports)
-			}
-			if !reflect.DeepEqual(cast.bodybuf, test.bodybuf) {
-				t.Fatalf(`bodybuf value error. Expected %v, got %v`, test.bodybuf, cast.bodybuf)
+			if !reflect.DeepEqual(m.bodybuf, test.bodybuf) {
+				t.Fatalf(`bodybuf value error. Expected %v, got %v`, test.bodybuf, m.bodybuf)
 			}
 		})
 	}
@@ -805,15 +793,10 @@ log.Println(math.Round(v))
 		for name, test := range tc {
 			t.Run(name, func(t *testing.T) {
 				m := NewMerger()
-
-				cast, ok := m.(*merger)
-				if !ok {
-					t.Fatalf("could not cast Merger to *merger")
-				}
-				cast.docbuf = test.docbuf
-				cast.pkgName = test.pkgName
-				cast.imports = test.imports
-				cast.bodybuf = test.bodybuf
+				m.docbuf = test.docbuf
+				m.pkgName = test.pkgName
+				m.imports = test.imports
+				m.bodybuf = test.bodybuf
 
 				var buf strings.Builder
 				v, err := m.WriteTo(&buf)

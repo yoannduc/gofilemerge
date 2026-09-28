@@ -29,7 +29,8 @@ type imprtHandling struct {
 	done     bool
 }
 
-// A Merger is used to merge files. Files to be merged are to be added
+// A Merger is used to merge files. It implements [io.Writer]
+// and [io.WriterTo]. Files to be merged are to be added
 // to buffer through Write method, then when all files are added, the
 // output merged file can be written to an [io.Writer] with WriteTo.
 // Merger is not thread safe.
@@ -45,40 +46,28 @@ type imprtHandling struct {
 //	import m "math"
 //	import . "math"
 //	import _ "math"
-type Merger interface {
-	SetPackage(string)
-	Write([]byte) (int, error)
-	WriteTo(io.Writer) (int64, error)
-}
-
-// merger is the concrete type that implements [Merger].
-type merger struct {
+type Merger struct {
 	docbuf  bytes.Buffer
 	pkgName string
 	imports map[string]imprt
 	bodybuf bytes.Buffer
 }
 
-// Check that *merger correctly implements [Merger].
-var _ Merger = (*merger)(nil)
-
 // NewMerger creates and initializes a new [Merger].
-func NewMerger() Merger {
-	return &merger{
+func NewMerger() *Merger {
+	return &Merger{
 		imports: make(map[string]imprt, 15),
 	}
 }
 
 // SetPackage sets the package name that will appear on merged output.
-func (m *merger) SetPackage(pkg string) {
+func (m *Merger) SetPackage(pkg string) {
 	m.pkgName = pkg
 }
 
-// Write implements [io.Writer].
-//
 // Write writes a go file to [Merger]. The return value n is the
 // length of p; err is always nil.
-func (m *merger) Write(p []byte) (int, error) {
+func (m *Merger) Write(p []byte) (int, error) {
 	fset := token.NewFileSet()
 	file := fset.AddFile("", fset.Base(), len(p))
 	var s scanner.Scanner
@@ -171,13 +160,11 @@ func (m *merger) Write(p []byte) (int, error) {
 	return n, nil
 }
 
-// WriteTo implements [io.WriterTo].
-//
 // WriteTo writes resulting merged file to w until there's no more
 // data to write or when an error occurs. The return value n is the
 // number of bytes written. Any error encountered during the write
 // is also returned.
-func (m *merger) WriteTo(w io.Writer) (int64, error) {
+func (m *Merger) WriteTo(w io.Writer) (int64, error) {
 	var out int64
 	i, err := m.docbuf.WriteTo(w)
 	if err != nil {

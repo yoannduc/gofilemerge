@@ -70,15 +70,9 @@ func (m *merger) Write(p []byte) (int, error) {
 
 		if tok == token.PACKAGE {
 			if file.Offset(pos) > 0 && m.docbuf.Len() > 0 {
-				_, err := m.docbuf.WriteString("\n")
-				if err != nil {
-					return n, err
-				}
+				_, _ = m.docbuf.WriteString("\n")
 			}
-			i, err := m.docbuf.Write(p[:file.Offset(pos)])
-			if err != nil {
-				return n, err
-			}
+			i, _ := m.docbuf.Write(p[:file.Offset(pos)])
 			n += i
 			skipFrom = file.Offset(pos)
 		}
@@ -112,15 +106,9 @@ func (m *merger) Write(p []byte) (int, error) {
 		// If imports are done & we reached newline, write all remaining file to body buffer.
 		if imprtBloc.done && prev == token.SEMICOLON {
 			if m.bodybuf.Len() > 0 {
-				_, err := m.bodybuf.WriteString("\n")
-				if err != nil {
-					return n, err
-				}
+				_, _ = m.bodybuf.WriteString("\n")
 			}
-			i, err := m.bodybuf.Write(p[file.Offset(pos):])
-			if err != nil {
-				return n, err
-			}
+			i, _ := m.bodybuf.Write(p[file.Offset(pos):])
 			n += i
 			n += len(p[skipFrom:file.Offset(pos)])
 			break

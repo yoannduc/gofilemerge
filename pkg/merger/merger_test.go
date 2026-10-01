@@ -206,8 +206,8 @@ func main() {
 }
 `)
 
-func TestNewMerger(t *testing.T) {
-	v := NewMerger()
+func TestNew(t *testing.T) {
+	v := New()
 	r := reflect.ValueOf(v)
 	if _, ok := reflect.TypeAssert[*Merger](r); !ok {
 		t.Fatalf(`output is not of type *Merger.`)
@@ -234,7 +234,7 @@ func TestSetPackage(t *testing.T) {
 
 	for _, test := range tc {
 		t.Run(test.in, func(t *testing.T) {
-			m := NewMerger()
+			m := New()
 			m.SetPackage(test.in)
 			if !reflect.DeepEqual(m.pkgName, test.out) {
 				t.Fatalf(`value was not expected for input "%v". Expected %v, got %v`, test.in, test.out, m.pkgName)
@@ -555,7 +555,7 @@ log.Println(math.Round(v))
 
 	for name, test := range tc {
 		t.Run(name, func(t *testing.T) {
-			m := NewMerger()
+			m := New()
 			for _, tst := range test.inout {
 				v, err := m.Write(tst.in)
 				if !reflect.DeepEqual(v, tst.out) {
@@ -792,7 +792,7 @@ log.Println(math.Round(v))
 
 		for name, test := range tc {
 			t.Run(name, func(t *testing.T) {
-				m := NewMerger()
+				m := New()
 				m.docbuf = test.docbuf
 				m.pkgName = test.pkgName
 				m.imports = test.imports
@@ -898,7 +898,7 @@ log.Println(math.Round(v))
 
 		for name, test := range tc {
 			t.Run(name, func(t *testing.T) {
-				m := NewMerger()
+				m := New()
 				m.Write(test.f)
 
 				w := NewLimitWriter(new(strings.Builder), test.limit)
@@ -1338,7 +1338,7 @@ func main() {
 
 		for name, test := range tc {
 			t.Run(name, func(t *testing.T) {
-				m := NewMerger()
+				m := New()
 				for _, f := range test.files {
 					m.Write(f)
 				}

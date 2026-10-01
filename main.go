@@ -41,7 +41,7 @@ func main() {
 		return
 	}
 
-	m := merger.NewMerger()
+	m := merger.New()
 	if pkgName != "" {
 		m.SetPackage(pkgName)
 	}

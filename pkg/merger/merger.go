@@ -53,8 +53,8 @@ type Merger struct {
 	bodybuf bytes.Buffer
 }
 
-// NewMerger creates and initializes a new [Merger].
-func NewMerger() *Merger {
+// New creates and initializes a new [Merger].
+func New() *Merger {
 	return &Merger{
 		imports: make(map[string]imprt, 15),
 	}
